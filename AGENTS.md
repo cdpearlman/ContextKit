@@ -12,21 +12,22 @@ After bootstrap, this file (or the tool's native equivalent) will become the per
 
 Determine which AI coding tool is running this session. Check for existing configuration:
 - `.cursor/rules/` → Cursor
-- `CLAUDE.md` → Claude Code
-- `.windsurfrules` → Windsurf
-- `.github/copilot-instructions.md` → GitHub Copilot
+- `CLAUDE.md` or `.claude/` → Claude Code
+- `.windsurf/rules/` or `.windsurfrules` → Windsurf
+- `.github/copilot-instructions.md` or `.github/instructions/` → GitHub Copilot
 
 If unclear, ask:
 > "Which AI coding tool are you using? (Cursor, Claude Code, Copilot, Windsurf, or other)"
 
 This determines where the routing file gets written after bootstrap:
-| Tool | Write routing file to |
-|------|----------------------|
-| Cursor | `.cursor/rules/` as an always-apply rule |
-| Claude Code | `CLAUDE.md` |
-| Windsurf | `.windsurfrules` |
-| Copilot | `.github/copilot-instructions.md` |
-| Generic / Unknown | `AGENTS.md` (overwrite this file) |
+
+| Tool | Routing file location | Format |
+|------|----------------------|--------|
+| Cursor | `.cursor/rules/contextkit.mdc` | `.mdc` with YAML frontmatter (`alwaysApply: true`) |
+| Claude Code | `CLAUDE.md` (project root) | Plain markdown, supports `@imports` |
+| Windsurf | `.windsurf/rules/contextkit.md` | Plain markdown, no frontmatter (activation mode set via UI) |
+| Copilot | `.github/copilot-instructions.md` | Plain markdown, no frontmatter |
+| Generic / Unknown | `AGENTS.md` (overwrite this file) | Plain markdown |
 
 ### Project Detection
 
@@ -172,7 +173,11 @@ Create `.context/data/` with the following:
 
 ### Step 3: Write the routing file
 
-Write the routing file to the location determined in Phase 1. This replaces the bootstrap content entirely. The routing file must be **under 150 lines** and contain:
+Write the routing file to the location determined in Phase 1. This replaces the bootstrap content entirely. The routing file must be **under 150 lines** (excluding frontmatter). Use the correct format for the detected tool.
+
+#### Routing file body (shared across all tools)
+
+The markdown body is the same regardless of tool. Use this template:
 
 ```markdown
 # [Project Name]
@@ -225,6 +230,112 @@ Always look for opportunities to update the memory system (these instructions ma
 - [Preference from interview]
 ...
 ```
+
+#### Tool-specific formatting
+
+Each tool has different file format requirements. Wrap the shared body above with the correct format for the detected tool.
+
+**Cursor** — `.cursor/rules/contextkit.mdc`
+
+Cursor rules use `.mdc` files with YAML frontmatter. The routing file must include these frontmatter fields:
+
+```yaml
+---
+description: "ContextKit routing file — project memory and conventions"
+alwaysApply: true
+---
+```
+
+- `description` (string): Shown in the rule picker UI. Summarize what this rule provides.
+- `alwaysApply` (boolean): Must be `true` so the routing file loads in every session.
+- `globs` (string, optional): Omit for the routing file since it applies globally. Use globs only for file-scoped module rules if needed (e.g., `globs: **/*.ts`).
+
+Full example structure:
+
+```
+---
+description: "ContextKit routing file — project memory and conventions"
+alwaysApply: true
+---
+
+# [Project Name]
+[routing file body here]
+```
+
+**Claude Code** — `CLAUDE.md`
+
+Claude Code reads `CLAUDE.md` as plain markdown with no frontmatter required at the project root. Key format considerations:
+
+- Target **under 200 lines**. Longer files degrade instruction-following.
+- Use `@path/to/file` syntax to import module files instead of inlining them. Example: `@.context/modules/conventions.md`
+- For path-scoped rules, create additional files in `.claude/rules/` with YAML `paths:` frontmatter:
+
+```yaml
+---
+paths:
+  - "src/api/**/*.ts"
+---
+```
+
+- Personal/local overrides go in `CLAUDE.local.md` (auto-gitignored).
+
+Full example structure:
+
+```
+# [Project Name]
+[routing file body here]
+
+## Modules
+Load these when working in the relevant area:
+- @.context/modules/architecture.md
+- @.context/modules/conventions.md
+```
+
+**Windsurf** — `.windsurf/rules/contextkit.md`
+
+Windsurf rule files are plain markdown with **no frontmatter**. Activation modes (Always On, Glob, Model Decision, Manual) are configured through the Windsurf UI, not in the file itself.
+
+- Maximum **12,000 characters** per rule file, **6,000 per individual rule**.
+- Use clear section headers organized by domain/concern.
+- Optional XML tags can group related rules: `<coding_guidelines>...</coding_guidelines>`
+- Windsurf also respects `AGENTS.md` files for directory-scoped rules.
+
+After writing the file, instruct the user: *"Set this rule's activation mode to 'Always On' in the Windsurf Customizations panel."*
+
+Full example structure:
+
+```
+# [Project Name]
+[routing file body here]
+```
+
+**GitHub Copilot** — `.github/copilot-instructions.md`
+
+The repository-wide instructions file is plain markdown with no frontmatter. It applies to all Copilot interactions in the repository.
+
+- First **4,000 characters** are used for code review; the full file is used by Copilot Chat and coding agent.
+- Place the most critical rules (Critical Rules section) near the top of the file.
+- For path-specific rules, create additional files in `.github/instructions/` using `NAME.instructions.md` format with `applyTo` frontmatter:
+
+```yaml
+---
+applyTo: "src/api/**/*.ts"
+---
+```
+
+- Optional `excludeAgent` field can hide instructions from specific agents (`"code-review"` or `"coding-agent"`).
+- Copilot also respects `AGENTS.md` files for directory-scoped agent instructions.
+
+Full example structure:
+
+```
+# [Project Name]
+[routing file body here]
+```
+
+**Generic / Unknown** — `AGENTS.md`
+
+Plain markdown, no frontmatter. Overwrites this bootstrap file. `AGENTS.md` is supported by multiple tools (Copilot, Windsurf, and others) as a directory-scoped convention. A root-level `AGENTS.md` applies globally.
 
 ---
 
