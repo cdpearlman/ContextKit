@@ -29,7 +29,7 @@ This determines where the routing file gets written after bootstrap:
 | Copilot | `.github/copilot-instructions.md` | Plain markdown, no frontmatter |
 | Generic / Unknown | `AGENTS.md` (overwrite this file) | Plain markdown |
 
-**Slash command research**: Once the tool is identified, research how that tool handles custom slash commands or workflow shortcuts. Reference notes:
+**Slash command research**: Once the tool is identified, research how that tool handles custom slash commands or workflow shortcuts. Reference notes (verify these are still current for your tool version):
 - **Claude Code**: Supports custom slash commands defined in `.claude/commands/` as markdown files. Command name = filename (e.g., `spec.md` → `/spec`). The file content describes what the command does; the agent executes it when invoked.
 - **Cursor**: Does not have a native custom slash command registry. Workflow triggers are encoded in rule files and invoked via natural language or agent instructions.
 - **Copilot**: Supports custom instructions but no custom slash command format as of early 2026.
@@ -103,9 +103,9 @@ Follow up on: error handling patterns, logging approach, patterns learned the ha
 > "How do you want me to work? When should I ask before proceeding vs. just do it? Any preferences on how I communicate?"
 
 Follow up:
-> "When I summarize what I did in a session, do you want me to report neutrally — what changed, what was tried and failed, what I'm uncertain about — or do you prefer a summary framed around what was accomplished?"
+> "When I summarize a session, what tone do you prefer — neutral (what changed, what failed, what's uncertain) or accomplishment-focused (what was achieved, what's done)?"
 
-Default to neutral reporting unless the user explicitly prefers accomplishment framing. Record the preference.
+Record the user's preference. If they don't have one, ask which they'd like to try first.
 
 **Research & spec workflow**
 > "Before I write code, do you want me to research options and write a spec first — or dive straight into implementation? And if specs, where should they live? (project root, docs/, somewhere else)"
@@ -157,8 +157,8 @@ Create `.context/data/` with the following:
 
 <!-- Append new entries after each substantive work session. Never edit past entries.
      After ~30 entries, propose consolidation: summarize the oldest 20 into a dated
-     summary block preserving key decisions and open threads, then replace those entries
-     with the summary. -->
+     summary block preserving key decisions and open threads, then replace those
+     entries with the summary. Never consolidate silently. -->
 
 ## [today's date] — Bootstrap
 **Area**: Project setup
@@ -194,8 +194,8 @@ Create `.context/data/` with the following:
 
 <!-- Append new entries for new lessons. When a lesson is superseded or was wrong,
      add a correction inline beneath the original, prefixed [YYYY-MM-DD UPDATE]:.
-     At session checkpoints, propose consolidation if entries have grown contradictory
-     or redundant — never consolidate silently. -->
+     After ~30 entries or when entries have grown contradictory or redundant, propose
+     consolidation — never consolidate silently. -->
 <!-- Format:
 ## YYYY-MM-DD — [Brief title]
 **What happened**: What went wrong or what was discovered
@@ -226,19 +226,10 @@ The markdown body is the same regardless of tool. Use this template:
 - [Rule derived from interview]
 ...
 
-## Context Strategy
-<!-- How to navigate this project's memory — generated from the interview, not generic -->
-Before starting any task, load only the context relevant to that task. Do not load
-all modules. Use the Module Map below to determine what applies, then follow these
-project-specific routing rules:
-
-- [e.g. "Any change touching the auth layer: load architecture.md first"]
-- [e.g. "Writing or reviewing code: always load conventions.md"]
-- [e.g. "If a decision needs to be made: check decisions.md before proposing anything"]
-- [Generate 3-5 routing rules specific to this project's structure and workflow]
-
 ## Module Map
-<!-- Domain-specific context — load only what the current task requires -->
+<!-- Load ONLY the modules relevant to the current task — never load everything -->
+Before starting work, scan this table to determine which modules apply. Also check
+Data Files for relevant history.
 | Module | Path | Load when |
 |--------|------|----------|
 | [Name] | .context/modules/[file].md | [Specific trigger from interview] |
@@ -267,23 +258,21 @@ Always look for opportunities to update the memory system:
 3. Never update memory mid-task without mentioning it — finish current work first
 
 **Data file rules**:
-- `sessions.md` — append-only. Never edit past entries. After ~30 sessions, propose
-  consolidation: summarize the oldest 20 entries into a single dated summary block,
+- `sessions.md` — append-only. Never edit past entries. After ~30 entries, propose
+  consolidation: summarize the oldest 20 into a single dated summary block,
   preserving key decisions and open threads, then replace those entries with the summary.
 - `decisions.md` — append new entries freely. When a "Revisit if" condition is met,
   add a follow-up note inline beneath the original entry (prefix: `[YYYY-MM-DD UPDATE]:`).
   Never delete entries.
 - `lessons.md` — append new entries freely. When a lesson is superseded or was wrong,
-  add a correction inline beneath the original (prefix: `[YYYY-MM-DD UPDATE]:`). At
-  session checkpoints, propose consolidation if lessons.md has grown contradictory or
-  redundant — propose a specific rewrite for approval, not a silent rewrite.
+  add a correction inline beneath the original (prefix: `[YYYY-MM-DD UPDATE]:`). After
+  ~30 entries or when entries have grown contradictory or redundant, propose consolidation
+  — never consolidate silently.
 
 **Other rules**:
 - Routing file changes are high-stakes — propose them carefully
 - Modules can be edited — but changes should be targeted, not full rewrites
-- **Session summaries**: Report neutrally — what changed, what was tried and failed,
-  what assumptions were made. Do not frame summaries as accomplishments unless the
-  user has explicitly requested that framing.
+- **Session summaries**: Use the reporting style from the interview — [neutral / accomplishment-focused / user's custom description]. See Preferences section.
 
 ## Preferences
 <!-- How the user wants the agent to behave — generated from interview -->
