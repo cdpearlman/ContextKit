@@ -151,7 +151,9 @@ Data files live in `.context/data/` and store the project's institutional memory
 These are created during bootstrap and maintained throughout the project's life:
 
 #### `sessions.md` — Running Work Log
-An append-only log of meaningful work sessions. The agent appends a summary when it detects it did substantive work (not just answering a question).
+A log of meaningful work sessions. The agent appends a summary when it detects it did substantive work (not just answering a question). Past entries are never edited — only new entries appended.
+
+**Consolidation**: After approximately 30 entries, the agent proposes consolidating the oldest 20 into a single dated summary block that preserves key decisions and open threads. The original entries are replaced with the summary. This keeps the file navigable without losing institutional knowledge.
 
 ```markdown
 ## 2026-03-01
@@ -162,8 +164,10 @@ An append-only log of meaningful work sessions. The agent appends a summary when
 **Open threads**: Token revocation endpoint still needs implementation
 ```
 
-#### `decisions.md` — Decision Record 
-Captures *why* things were decided, not just *what*. This is where the agent gets smarter about the project's reasoning over time.
+#### `decisions.md` — Decision Record
+Captures *why* things were decided, not just *what*, including what alternatives were considered and rejected. This is where the agent gets smarter about the project's reasoning over time — preventing it from relitigating closed questions.
+
+When a "Revisit if" condition is met, the agent adds a follow-up note inline beneath the original entry rather than creating a new entry. Entries are never deleted.
 
 ```markdown
 ## Chose PostgreSQL over MongoDB
@@ -173,10 +177,14 @@ Captures *why* things were decided, not just *what*. This is where the agent get
 **Decision**: PostgreSQL
 **Reasoning**: Our data model is inherently relational (users → teams → projects). Schema flexibility isn't worth giving up joins and constraints.
 **Revisit if**: Schema changes become extremely frequent during early prototyping
+
+[2026-04-10 UPDATE]: Schema has been stable. No reason to revisit.
 ```
 
 #### `lessons.md` — Accumulated Wisdom
-What the team learned the hard way. This is the single most valuable long-term file — it encodes judgment, not just facts.
+What the team learned the hard way. This is the single most valuable long-term file — it encodes judgment, not just facts. Includes what was tried and ruled out, not just what was wrong.
+
+When a lesson is superseded or was itself wrong, the agent adds a correction inline rather than deleting the original. At session checkpoints, the agent may propose consolidation if entries have grown contradictory or redundant — but never consolidates silently.
 
 ```markdown
 ## 2026-02-20 — API error handling
@@ -184,6 +192,9 @@ What the team learned the hard way. This is the single most valuable long-term f
 **Root cause**: No error sanitization layer between service and controller
 **Fix**: Added ErrorMapper in middleware that maps internal errors to client-safe responses
 **Rule going forward**: Never return raw errors from any layer below the controller
+**What was ruled out**: Handling sanitization in the service layer — too scattered, controller boundary is cleaner
+
+[2026-03-15 UPDATE]: ErrorMapper pattern extended to WebSocket errors as well. Same rule applies.
 ```
 
 The agent references these files when encountering similar situations, producing answers grounded in the project's actual history rather than generic advice.
@@ -215,7 +226,9 @@ The agent should aim to understand these areas, adapting its questions based on 
 - **How do you work?** — Solo or team, git workflow, deployment, CI/CD
 - **What are the rules?** — Naming conventions, code patterns, things that are always or never done
 - **What's been tried?** — Past mistakes, abandoned approaches, hard-won knowledge
-- **How should I behave?** — Communication preferences, when to ask vs. proceed, risk tolerance
+- **How should I behave?** — Communication preferences, when to ask vs. proceed, risk tolerance. Follow up: neutral vs. accomplishment-framed session summaries (default: neutral)
+- **Research & specs** — Does the user want specs written before implementation? If so, where do spec files live? (e.g., project root, `docs/`, `specs/`)
+- **Slash commands** — Does the user want workflow shortcuts set up? If yes, generate in the format appropriate for the detected tool
 
 The agent should go deeper on topics where the user has strong opinions or where the project has unusual complexity. It should move quickly through areas where the user gives short answers or says "standard."
 
@@ -223,11 +236,13 @@ The agent should go deeper on topics where the user has strong opinions or where
 
 After the interview, the agent generates:
 
-1. **Routing file** — Overwrites `AGENTS.md` (or writes `CLAUDE.md`, `.cursor/rules/`, etc.) with the real routing content — project identity, critical rules, module map, memory maintenance protocol
+1. **Routing file** — Overwrites `AGENTS.md` (or writes `CLAUDE.md`, `.cursor/rules/`, etc.) with the real routing content — project identity, critical rules, context strategy, module map, memory maintenance protocol, and any conditional sections (Spec Workflow, Commands)
 2. **`.context/modules/`** — Whatever modules are needed based on what it learned
 3. **`.context/data/sessions.md`** — Initialized with the bootstrap session as the first entry
 4. **`.context/data/decisions.md`** — Seeded with any decisions discussed during the interview
 5. **`.context/data/lessons.md`** — Seeded with any lessons/mistakes mentioned during the interview
+6. **Spec Workflow section** (conditional) — Added to routing file if user opted in; includes spec file location and the `SPEC-*.md` format with exit criteria as built-in task contract
+7. **Commands section** (conditional) — Added to routing file if user opted in; format depends on detected tool (native slash commands where supported, named workflow conventions elsewhere). For Claude Code: generates `.claude/commands/` files.
 
 The agent decides the module structure. A simple CLI tool might get `conventions.md` and `workflows.md`. A complex full-stack app might get `architecture.md`, `conventions.md`, `frontend.md`, `api.md`, `database.md`, and `testing.md`. The bootstrap interview determines the shape of the output.
 
@@ -260,8 +275,11 @@ The agent should look for update opportunities:
 
 - **Never update mid-task** without mentioning it — finish the current work, then propose the update
 - **Routing file changes are high-stakes** — the routing file affects every future session, so changes here get extra scrutiny
-- **Data files are append-only** — sessions.md, decisions.md, lessons.md grow but never lose entries
 - **Modules can be edited** — conventions change, architecture evolves, but changes should be surgical (targeted edits, not full rewrites)
+- **`sessions.md`** — strictly append-only. Never edit past entries. After ~30 entries, propose consolidation: summarize the oldest 20 into a dated summary block preserving key decisions and open threads.
+- **`decisions.md`** — append new entries for new decisions. When a "Revisit if" condition is met, add a `[YYYY-MM-DD UPDATE]:` note inline beneath the original. Never delete entries.
+- **`lessons.md`** — append new entries for new lessons. When a lesson is superseded or wrong, add a `[YYYY-MM-DD UPDATE]:` correction inline. At session checkpoints, propose consolidation if entries are contradictory or redundant — never consolidate silently.
+- **Session summaries** — report neutrally by default: what changed, what was tried and failed, what assumptions were made. Use accomplishment framing only if the user explicitly requested it during the interview.
 
 ---
 
@@ -342,9 +360,14 @@ One-line description. Built with [stack].
 | Bootstrap file | `AGENTS.md` | Industry standard, supported by Claude Code / Cursor / Copilot |
 | Memory folder | `.context/` | Hidden folder, doesn't clutter project root |
 | Routing file | The tool's native memory file (`AGENTS.md`, `CLAUDE.md`, `.cursor/rules`, etc.) | Zero indirection — the file the tool auto-discovers IS the project brain |
-| Tool detection | Asked or inferred during bootstrap | Determines which native file receives the routing content |
+| Tool detection | Asked or inferred during bootstrap | Determines which native file receives the routing content; also gates slash command format research |
 | Module structure | Suggested categories, agent decides | Avoids dead-weight files for projects that don't need them |
-| Session logs | Single `sessions.md`, append-only | Simpler than date-stamped files, agent appends when substantive work is done |
+| Session logs | Single `sessions.md`, append with consolidation at ~30 entries | Keeps file navigable long-term; consolidation preserves decisions and open threads |
+| Data file mutability | Append-only with inline corrections, not full rewrites | Preserves audit trail; `[YYYY-MM-DD UPDATE]:` pattern makes corrections visible without losing history |
 | Update mechanism | Proactive detection + diff approval | Agent watches for update moments, user approves via editor diff |
 | Bootstrap | Single `AGENTS.md` file | Maximum portability — one file to drop into any project |
 | Interview style | Guided conversation with topic checklist | Balance between structure (covers all bases) and naturalness (follows the user's lead) |
+| Spec workflow | Conditional — opt-in during interview, location configurable | Not all projects want pre-implementation specs; those that do get format + exit criteria baked in |
+| Slash commands | Conditional — opt-in during interview, format per detected tool | Tool-native where supported (Claude Code), named conventions elsewhere |
+| Session summaries | Neutral framing by default | Reduces sycophantic reporting; accomplishment framing available if user prefers |
+| Negative space in decisions/lessons | "What was ruled out" field + inline corrections | Prevents the agent from relitigating closed questions or inheriting wrong lessons |

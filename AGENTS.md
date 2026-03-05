@@ -29,6 +29,15 @@ This determines where the routing file gets written after bootstrap:
 | Copilot | `.github/copilot-instructions.md` | Plain markdown, no frontmatter |
 | Generic / Unknown | `AGENTS.md` (overwrite this file) | Plain markdown |
 
+**Slash command research**: Once the tool is identified, research how that tool handles custom slash commands or workflow shortcuts. Reference notes:
+- **Claude Code**: Supports custom slash commands defined in `.claude/commands/` as markdown files. Command name = filename (e.g., `spec.md` → `/spec`). The file content describes what the command does; the agent executes it when invoked.
+- **Cursor**: Does not have a native custom slash command registry. Workflow triggers are encoded in rule files and invoked via natural language or agent instructions.
+- **Copilot**: Supports custom instructions but no custom slash command format as of early 2026.
+- **Windsurf**: Workflows triggered via natural language; no custom slash command file format.
+- **Generic / AGENTS.md**: Document workflow conventions as prose in the routing file.
+
+Store this research — you will use it in Phase 3 if the user opts in to slash commands during the interview.
+
 ### Project Detection
 
 Determine whether this is a **new project** (greenfield) or an **existing project** (brownfield).
@@ -93,6 +102,21 @@ Follow up on: error handling patterns, logging approach, patterns learned the ha
 **Agent behavior**
 > "How do you want me to work? When should I ask before proceeding vs. just do it? Any preferences on how I communicate?"
 
+Follow up:
+> "When I summarize what I did in a session, do you want me to report neutrally — what changed, what was tried and failed, what I'm uncertain about — or do you prefer a summary framed around what was accomplished?"
+
+Default to neutral reporting unless the user explicitly prefers accomplishment framing. Record the preference.
+
+**Research & spec workflow**
+> "Before I write code, do you want me to research options and write a spec first — or dive straight into implementation? And if specs, where should they live? (project root, docs/, somewhere else)"
+
+If the user opts in to specs, note the preferred location. This determines whether the Spec Workflow section is generated in the routing file and where `SPEC-*.md` files will be placed.
+
+**Slash commands**
+> "Do you want me to set up any slash commands or workflow shortcuts — things like `/spec`, `/checkpoint`, or `/lessons` that you can type to trigger specific workflows?"
+
+If yes: generate the appropriate format for the detected tool using the research done in Phase 1. If the tool doesn't support native slash commands, document the workflows as named conventions in the routing file instead (e.g., "To run a checkpoint, say 'run checkpoint'").
+
 ### Interview Guidelines
 
 - **Go deeper** where the user has strong opinions or the project has unusual complexity
@@ -131,7 +155,10 @@ Create `.context/data/` with the following:
 ```markdown
 # Session Log
 
-<!-- Append-only. Add a new entry after each substantive work session. -->
+<!-- Append new entries after each substantive work session. Never edit past entries.
+     After ~30 entries, propose consolidation: summarize the oldest 20 into a dated
+     summary block preserving key decisions and open threads, then replace those entries
+     with the summary. -->
 
 ## [today's date] — Bootstrap
 **Area**: Project setup
@@ -145,15 +172,19 @@ Create `.context/data/` with the following:
 ```markdown
 # Decision Record
 
-<!-- Append-only. Record significant decisions with reasoning. -->
+<!-- Append new entries for new decisions. When a "Revisit if" condition is met, add
+     a follow-up note inline beneath the original entry, prefixed [YYYY-MM-DD UPDATE]:.
+     Never delete entries. -->
 <!-- Format:
 ## [Decision title]
 **Date**: YYYY-MM-DD
 **Context**: What prompted this decision
-**Options considered**: What alternatives were evaluated
+**Options considered**: What alternatives were evaluated and why they were ruled out
 **Decision**: What was chosen
 **Reasoning**: Why
 **Revisit if**: Conditions that would warrant reconsidering
+
+[YYYY-MM-DD UPDATE]: Follow-up note if conditions changed or decision was revised.
 -->
 ```
 
@@ -161,13 +192,19 @@ Create `.context/data/` with the following:
 ```markdown
 # Lessons Learned
 
-<!-- Append-only. Record what the team learned the hard way. -->
+<!-- Append new entries for new lessons. When a lesson is superseded or was wrong,
+     add a correction inline beneath the original, prefixed [YYYY-MM-DD UPDATE]:.
+     At session checkpoints, propose consolidation if entries have grown contradictory
+     or redundant — never consolidate silently. -->
 <!-- Format:
 ## YYYY-MM-DD — [Brief title]
 **What happened**: What went wrong or what was discovered
 **Root cause**: Why it happened
 **Fix**: What was done about it
 **Rule going forward**: What to do (or avoid) in the future
+**What was ruled out**: Approaches considered and rejected, and why
+
+[YYYY-MM-DD UPDATE]: Correction or superseding note if this lesson was wrong or outdated.
 -->
 ```
 
@@ -189,24 +226,35 @@ The markdown body is the same regardless of tool. Use this template:
 - [Rule derived from interview]
 ...
 
+## Context Strategy
+<!-- How to navigate this project's memory — generated from the interview, not generic -->
+Before starting any task, load only the context relevant to that task. Do not load
+all modules. Use the Module Map below to determine what applies, then follow these
+project-specific routing rules:
+
+- [e.g. "Any change touching the auth layer: load architecture.md first"]
+- [e.g. "Writing or reviewing code: always load conventions.md"]
+- [e.g. "If a decision needs to be made: check decisions.md before proposing anything"]
+- [Generate 3-5 routing rules specific to this project's structure and workflow]
+
 ## Module Map
-<!-- Load the relevant module(s) before starting work in that area -->
+<!-- Domain-specific context — load only what the current task requires -->
 | Module | Path | Load when |
 |--------|------|----------|
-| [Name] | .context/modules/[file].md | [When to load it] |
+| [Name] | .context/modules/[file].md | [Specific trigger from interview] |
 ...
 
 ## Data Files
-<!-- Reference these for project history and accumulated knowledge -->
+<!-- Accumulated knowledge — consult relevant entries, not entire files -->
 | File | Path | Purpose |
 |------|------|---------|
-| Sessions | .context/data/sessions.md | Running work log (append-only) |
-| Decisions | .context/data/decisions.md | Decision records with reasoning (append-only) |
-| Lessons | .context/data/lessons.md | Hard-won knowledge and past mistakes (append-only) |
+| Sessions | .context/data/sessions.md | Running work log |
+| Decisions | .context/data/decisions.md | Decision records with reasoning |
+| Lessons | .context/data/lessons.md | Hard-won knowledge and past mistakes |
 
 ## Memory Maintenance
 
-Always look for opportunities to update the memory system (these instructions may need to be added to the routing file):
+Always look for opportunities to update the memory system:
 - **New patterns**: "We've been doing X consistently — should I add it to conventions?"
 - **Decisions made**: "We decided Y — should I record this in decisions.md?"
 - **Mistakes caught**: "This went wrong because Z — should I add it to lessons.md?"
@@ -218,17 +266,64 @@ Always look for opportunities to update the memory system (these instructions ma
 2. Wait for approval — the user will review the diff and approve, edit, or deny
 3. Never update memory mid-task without mentioning it — finish current work first
 
-**Rules**:
+**Data file rules**:
+- `sessions.md` — append-only. Never edit past entries. After ~30 sessions, propose
+  consolidation: summarize the oldest 20 entries into a single dated summary block,
+  preserving key decisions and open threads, then replace those entries with the summary.
+- `decisions.md` — append new entries freely. When a "Revisit if" condition is met,
+  add a follow-up note inline beneath the original entry (prefix: `[YYYY-MM-DD UPDATE]:`).
+  Never delete entries.
+- `lessons.md` — append new entries freely. When a lesson is superseded or was wrong,
+  add a correction inline beneath the original (prefix: `[YYYY-MM-DD UPDATE]:`). At
+  session checkpoints, propose consolidation if lessons.md has grown contradictory or
+  redundant — propose a specific rewrite for approval, not a silent rewrite.
+
+**Other rules**:
 - Routing file changes are high-stakes — propose them carefully
-- Data files are append-only — add entries, never remove or overwrite past entries
 - Modules can be edited — but changes should be targeted, not full rewrites
-- After substantive work sessions, append a summary to .context/data/sessions.md
+- **Session summaries**: Report neutrally — what changed, what was tried and failed,
+  what assumptions were made. Do not frame summaries as accomplishments unless the
+  user has explicitly requested that framing.
 
 ## Preferences
-<!-- How the user wants the agent to behave -->
+<!-- How the user wants the agent to behave — generated from interview -->
 - [Preference from interview]
 - [Preference from interview]
 ...
+
+## Spec Workflow
+<!-- Only include this section if the user opted in during the interview -->
+Before implementing anything non-trivial, generate a spec. Place specs in [location
+from interview — e.g. project root, docs/, specs/].
+
+**`SPEC-[feature-name].md`** format:
+- **Problem**: What are we solving and why
+- **Options considered**: At least 2-3 approaches with tradeoffs
+- **Decision**: What we're doing and why not the alternatives
+- **Implementation plan**: Step-by-step with file-level specifics
+- **Exit criteria**: Exactly what must be true when this is done (tests that must pass,
+  behavior to verify, screenshots if UI). This is the task contract — implementation
+  is not complete until all exit criteria are met.
+- **Out of scope**: What we explicitly are not doing
+
+Do not begin implementation until the spec is approved.
+
+## Commands
+<!-- Only include this section if the user opted in to slash commands during the interview -->
+<!-- For tools without native slash command support, document as named workflow conventions -->
+[Generated per-tool based on Phase 1 research — see examples below]
+
+<!-- Claude Code example (.claude/commands/ format):
+/spec        → Generates a SPEC-*.md for the current task before implementation
+/checkpoint  → Runs a memory checkpoint: proposes sessions.md entry + any pending updates
+/lessons     → Reviews lessons.md and proposes corrections for anything outdated
+-->
+
+<!-- Cursor / generic example (natural language conventions):
+"run spec"        → Generates a SPEC-*.md for the current task before implementation
+"run checkpoint"  → Proposes sessions.md entry + any pending memory updates
+"review lessons"  → Reviews lessons.md and proposes corrections for anything outdated
+-->
 ```
 
 #### Tool-specific formatting
