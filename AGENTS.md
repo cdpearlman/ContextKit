@@ -157,8 +157,11 @@ Create `.context/data/` with the following:
 
 <!-- Append new entries after each substantive work session. Never edit past entries.
      After ~30 entries, propose consolidation: summarize the oldest 20 into a dated
-     summary block preserving key decisions and open threads, then replace those
-     entries with the summary. Never consolidate silently. -->
+     summary block, then replace those entries with the summary. Never consolidate
+     silently. Compress aggressively — sessions.md is a work log, not a decision
+     record. Any decision worth preserving should already be in decisions.md; the
+     session summary only needs a pointer, not the full reasoning. Preserve open
+     threads that haven't been resolved. -->
 
 ## [today's date] — Bootstrap
 **Area**: Project setup
@@ -259,8 +262,11 @@ Always look for opportunities to update the memory system:
 
 **Data file rules**:
 - `sessions.md` — append-only. Never edit past entries. After ~30 entries, propose
-  consolidation: summarize the oldest 20 into a single dated summary block,
-  preserving key decisions and open threads, then replace those entries with the summary.
+  consolidation: summarize the oldest 20 into a single dated summary block and replace
+  those entries with the summary. Compress aggressively — sessions.md is a work log,
+  not a decision record. Any decision worth preserving should already be in
+  decisions.md; the session summary needs only a pointer, not full reasoning. Preserve
+  open threads that haven't been resolved.
 - `decisions.md` — append new entries freely. When a "Revisit if" condition is met,
   add a follow-up note inline beneath the original entry (prefix: `[YYYY-MM-DD UPDATE]:`).
   Never delete entries.
@@ -268,6 +274,16 @@ Always look for opportunities to update the memory system:
   add a correction inline beneath the original (prefix: `[YYYY-MM-DD UPDATE]:`). After
   ~30 entries or when entries have grown contradictory or redundant, propose consolidation
   — never consolidate silently.
+
+**Cross-file consolidation** — at checkpoint or after ~30 sessions, do a cross-file
+review in addition to per-file maintenance:
+- Do the routing file's Critical Rules still reflect accumulated decisions and lessons?
+  If not, propose a targeted update.
+- Have 3 or more decisions accumulated in one domain since the last module update?
+  If so, propose a focused rewrite of the relevant module.
+- Does any lessons entry contradict an existing decisions entry (or vice versa)?
+  Surface the conflict explicitly for resolution — do not silently pick one.
+- Cross-file consolidation is always proposed, never applied silently.
 
 **Other rules**:
 - Routing file changes are high-stakes — propose them carefully
