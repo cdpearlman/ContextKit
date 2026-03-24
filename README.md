@@ -86,6 +86,22 @@ The agent watches for moments when memory should update:
 
 It proposes specific changes, you review the diff, and only approved changes are written. Data files are append-only — the agent can't accidentally overwrite history. The routing file is treated as high-stakes since it affects every future session.
 
+### Skills (Claude Code)
+
+Memory maintenance instructions embedded in the routing file can lose salience during long conversations. ContextKit ships with **skills** — workflow shortcuts that load fresh instructions on demand — to solve this:
+
+| Skill | Trigger | What it does |
+|-------|---------|-------------|
+| `/checkpoint` | Auto + manual | Proposes sessions.md entry, checks for pending decisions/lessons, runs cross-file consolidation |
+| `/spec` | Manual only | Generates a SPEC-*.md with problem, options, decision, and exit criteria before implementation |
+| `/lessons` | Auto + manual | Reviews lessons.md for stale, contradictory, or outdated entries and proposes corrections |
+
+**Auto-triggered** skills can be invoked by Claude when it detects relevant moments (e.g., a decision was made, a mistake was caught). **Manual** skills run only when you type the command.
+
+Skills live in `.claude/skills/` and are customized during bootstrap. For non-Claude-Code tools, equivalent workflows are documented as natural language conventions in the routing file.
+
+> **Migrating from `.claude/commands/`?** Your existing command files still work. To upgrade: move `commandname.md` to `.claude/skills/commandname/SKILL.md` and add YAML frontmatter. See the [Claude Code skills docs](https://code.claude.com/docs/en/skills) for details.
+
 ## Quick Start
 
 1. Copy `AGENTS.md` into your project root
@@ -94,6 +110,8 @@ It proposes specific changes, you review the diff, and only approved changes are
 4. Answer the interview questions (5-10 minutes)
 5. Review the generated files
 6. Start working — the agent now has persistent memory
+
+For **Claude Code** users: the bootstrap also generates workflow skills in `.claude/skills/` that keep memory maintenance active even in long sessions.
 
 ## What This Is Not
 
@@ -113,6 +131,7 @@ It proposes specific changes, you review the diff, and only approved changes are
 | Module structure | Agent-determined | Avoids dead-weight files for projects that don't need them |
 | Session logs | Single `sessions.md`, append-only | Simpler than date-stamped files |
 | Update mechanism | Proactive detection + diff approval | Agent watches for update moments, user approves |
+| Workflow delivery | Skills (Claude Code) / conventions (others) | Skills solve context drift — instructions load fresh on demand instead of competing with conversation |
 | Interview style | Guided conversation with topic checklist | Balances structure with naturalness |
 
 ## License

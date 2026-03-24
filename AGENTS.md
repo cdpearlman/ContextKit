@@ -29,14 +29,14 @@ This determines where the routing file gets written after bootstrap:
 | Copilot | `.github/copilot-instructions.md` | Plain markdown, no frontmatter |
 | Generic / Unknown | `AGENTS.md` (overwrite this file) | Plain markdown |
 
-**Slash command research**: Once the tool is identified, research how that tool handles custom slash commands or workflow shortcuts. Reference notes (verify these are still current for your tool version):
-- **Claude Code**: Supports custom slash commands defined in `.claude/commands/` as markdown files. Command name = filename (e.g., `spec.md` → `/spec`). The file content describes what the command does; the agent executes it when invoked.
-- **Cursor**: Does not have a native custom slash command registry. Workflow triggers are encoded in rule files and invoked via natural language or agent instructions.
-- **Copilot**: Supports custom instructions but no custom slash command format as of early 2026.
-- **Windsurf**: Workflows triggered via natural language; no custom slash command file format.
+**Skills & workflow shortcut research**: Once the tool is identified, research how that tool handles custom skills or workflow shortcuts. Reference notes (verify these are still current for your tool version):
+- **Claude Code**: Supports skills in `.claude/skills/` as directories containing a `SKILL.md` file. Skill name = directory name (e.g., `checkpoint/SKILL.md` → `/checkpoint`). Skills support YAML frontmatter for auto-invocation control, tool restrictions, and subagent execution. Also supports legacy `.claude/commands/` files (a command at `.claude/commands/deploy.md` and a skill at `.claude/skills/deploy/SKILL.md` both create `/deploy`). Skills are recommended — they add supporting files, frontmatter control, and auto-invocation that commands lack.
+- **Cursor**: Does not have a native custom skill or slash command registry. Workflow triggers are encoded in rule files and invoked via natural language or agent instructions.
+- **Copilot**: Supports custom instructions but no custom skill format as of early 2026.
+- **Windsurf**: Workflows triggered via natural language; no custom skill file format.
 - **Generic / AGENTS.md**: Document workflow conventions as prose in the routing file.
 
-Store this research — you will use it in Phase 3 if the user opts in to slash commands during the interview.
+Store this research — you will use it in Phase 3 if the user opts in to skills or workflow shortcuts during the interview.
 
 ### Project Detection
 
@@ -112,10 +112,12 @@ Record the user's preference. If they don't have one, ask which they'd like to t
 
 If the user opts in to specs, note the preferred location. This determines whether the Spec Workflow section is generated in the routing file and where `SPEC-*.md` files will be placed.
 
-**Slash commands**
-> "Do you want me to set up any slash commands or workflow shortcuts — things like `/spec`, `/checkpoint`, or `/lessons` that you can type to trigger specific workflows?"
+**Skills & workflow shortcuts**
+> "Do you want me to set up workflow skills — things like `/checkpoint` (memory maintenance), `/spec` (spec generation), or `/lessons` (lesson review)? For Claude Code, these become proper skills that I can trigger automatically when relevant. For other tools, I'll document them as named workflow conventions."
 
-If yes: generate the appropriate format for the detected tool using the research done in Phase 1. If the tool doesn't support native slash commands, document the workflows as named conventions in the routing file instead (e.g., "To run a checkpoint, say 'run checkpoint'").
+If yes and Claude Code is detected: explain that skills can be auto-invoked by the agent (checkpoint, lessons) or restricted to manual invocation only (spec). Ask if the user wants to adjust which are auto vs manual.
+
+If yes: generate the appropriate format for the detected tool using the research done in Phase 1. For Claude Code, customize the skill templates shipped in `.claude/skills/`. For tools without native skill support, document the workflows as named conventions in the routing file instead (e.g., "To run a checkpoint, say 'run checkpoint'").
 
 ### Interview Guidelines
 
@@ -297,20 +299,22 @@ from interview — e.g. project root, docs/, specs/].
 
 Do not begin implementation until the spec is approved.
 
-## Commands
-<!-- Only include this section if the user opted in to slash commands during the interview -->
-<!-- For tools without native slash command support, document as named workflow conventions -->
+## Skills
+<!-- Only include this section if the user opted in to skills during the interview -->
+<!-- For Claude Code: reference the skills in .claude/skills/ -->
+<!-- For other tools: document as named workflow conventions -->
 [Generated per-tool based on Phase 1 research — see examples below]
 
-<!-- Claude Code example (.claude/commands/ format):
-/spec        → Generates a SPEC-*.md for the current task before implementation
-/checkpoint  → Runs a memory checkpoint: proposes sessions.md entry + any pending updates
-/lessons     → Reviews lessons.md and proposes corrections for anything outdated
+<!-- Claude Code example (.claude/skills/ format):
+ContextKit ships with skill templates in `.claude/skills/`. These were customized during bootstrap.
+- `/checkpoint` — Memory maintenance: proposes sessions.md entry + pending updates + cross-file consolidation (auto-invokes after substantive work)
+- `/spec` — Generates a SPEC-*.md for the current task before implementation (manual only)
+- `/lessons` — Reviews lessons.md for stale or contradictory entries and proposes corrections (auto-invokes when relevant)
 -->
 
 <!-- Cursor / generic example (natural language conventions):
-"run spec"        → Generates a SPEC-*.md for the current task before implementation
 "run checkpoint"  → Proposes sessions.md entry + any pending memory updates
+"run spec"        → Generates a SPEC-*.md for the current task before implementation
 "review lessons"  → Reviews lessons.md and proposes corrections for anything outdated
 -->
 ```
@@ -362,6 +366,7 @@ paths:
 ```
 
 - Personal/local overrides go in `CLAUDE.local.md` (auto-gitignored).
+- **Skills**: If the user opted in, customize the skill templates in `.claude/skills/` based on interview responses. Skills with `disable-model-invocation: false` (checkpoint, lessons) can be auto-triggered by Claude when relevant — their descriptions stay in context so Claude knows when to invoke them. Skills with `disable-model-invocation: true` (spec) are manual-only. Bootstrap should fill in `<!-- BOOTSTRAP_CUSTOMIZE -->` sections in each skill's `SKILL.md` with project-specific values (reporting style, spec location).
 
 Full example structure:
 
