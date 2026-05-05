@@ -1,8 +1,10 @@
 # ContextKit Bootstrap
 
-You are setting up ContextKit — a structured memory system for this project. Run this bootstrap exactly once. Do not write code or perform other tasks until bootstrap is complete.
+You are setting up ContextKit — a structured memory system and skill catalog for this project. Run this bootstrap exactly once. Do not write code or perform other tasks until bootstrap is complete.
 
-After bootstrap, this file (or the tool's native equivalent) will become the permanent project brain — the routing file loaded at the start of every session.
+After bootstrap, this file (or the tool's native equivalent) becomes the permanent project routing file — loaded at the start of every session.
+
+ContextKit ships with four skills already drafted in `.claude/skills/`. Bootstrap does not generate skill content; it **customizes** the shipped templates by filling in `BOOTSTRAP_CUSTOMIZE` blocks based on what the user tells you in the interview. For tools without first-class skill support, the same workflows are documented in the routing file as named conventions.
 
 ---
 
@@ -11,40 +13,39 @@ After bootstrap, this file (or the tool's native equivalent) will become the per
 ### Tool Detection
 
 Determine which AI coding tool is running this session. Check for existing configuration:
-- `.cursor/rules/` → Cursor
-- `CLAUDE.md` or `.claude/` → Claude Code
-- `.windsurf/rules/` or `.windsurfrules` → Windsurf
-- `.github/copilot-instructions.md` or `.github/instructions/` → GitHub Copilot
+
+| Signal | Tool |
+|--------|------|
+| `CLAUDE.md` or `.claude/` | Claude Code |
+| `AGENTS.md` (with `[memories]` section, or alongside `~/.codex/`) | Codex |
+| `.cursor/rules/` | Cursor |
+| `.windsurf/rules/` or `.windsurfrules` | Windsurf |
+| `.github/copilot-instructions.md` or `.github/instructions/` | GitHub Copilot |
+| None of the above | Generic / `AGENTS.md` |
 
 If unclear, ask:
-> "Which AI coding tool are you using? (Cursor, Claude Code, Copilot, Windsurf, or other)"
+> "Which AI coding tool are you using? (Claude Code, Codex, Cursor, Copilot, Windsurf, or other)"
 
-This determines where the routing file gets written after bootstrap:
+This determines where the routing file gets written and which skill format applies:
 
-| Tool | Routing file location | Format |
-|------|----------------------|--------|
-| Cursor | `.cursor/rules/contextkit.mdc` | `.mdc` with YAML frontmatter (`alwaysApply: true`) |
-| Claude Code | `CLAUDE.md` (project root) | Plain markdown, supports `@imports` |
-| Windsurf | `.windsurf/rules/contextkit.md` | Plain markdown, no frontmatter (activation mode set via UI) |
-| Copilot | `.github/copilot-instructions.md` | Plain markdown, no frontmatter |
-| Generic / Unknown | `AGENTS.md` (overwrite this file) | Plain markdown |
+| Tool | Routing file | Skill format |
+|------|--------------|--------------|
+| Claude Code | `CLAUDE.md` (project root) | `.claude/skills/<name>/SKILL.md` (auto-invocable when frontmatter allows) |
+| Codex | `AGENTS.md` (project root) | Documented as named workflow conventions in the routing file |
+| Cursor | `.cursor/rules/contextkit.mdc` (`alwaysApply: true`) | Documented as named workflow conventions |
+| Windsurf | `.windsurf/rules/contextkit.md` (no frontmatter; activation set in UI) | Documented as named workflow conventions |
+| Copilot | `.github/copilot-instructions.md` | Documented as named workflow conventions |
+| Generic | `AGENTS.md` (overwrite this file) | Documented as named workflow conventions |
 
-**Skills & workflow shortcut research**: Once the tool is identified, research how that tool handles custom skills or workflow shortcuts. Reference notes (verify these are still current for your tool version):
-- **Claude Code**: Supports skills in `.claude/skills/` as directories containing a `SKILL.md` file. Skill name = directory name (e.g., `checkpoint/SKILL.md` → `/checkpoint`). Skills support YAML frontmatter for auto-invocation control, tool restrictions, and subagent execution. Also supports legacy `.claude/commands/` files (a command at `.claude/commands/deploy.md` and a skill at `.claude/skills/deploy/SKILL.md` both create `/deploy`). Skills are recommended — they add supporting files, frontmatter control, and auto-invocation that commands lack.
-- **Cursor**: Does not have a native custom skill or slash command registry. Workflow triggers are encoded in rule files and invoked via natural language or agent instructions.
-- **Copilot**: Supports custom instructions but no custom skill format as of early 2026.
-- **Windsurf**: Workflows triggered via natural language; no custom skill file format.
-- **Generic / AGENTS.md**: Document workflow conventions as prose in the routing file.
-
-Store this research — you will use it in Phase 3 if the user opts in to skills or workflow shortcuts during the interview.
+**Tools with native auto-memory** — Claude Code (CLAUDE.md memory v2.1.59+) and Codex (`[memories]` opt-in table). For these tools, **do not create `sessions.md`**; the native feature covers it. For all other tools, create `sessions.md` as part of the data hierarchy.
 
 ### Project Detection
 
 Determine whether this is a **new project** (greenfield) or an **existing project** (brownfield).
 
 **If existing**: Before asking questions, scan the codebase to build context:
-- Package/dependency files (package.json, pyproject.toml, Cargo.toml, go.mod, etc.)
-- README.md
+- Package/dependency files (`package.json`, `pyproject.toml`, `Cargo.toml`, `go.mod`, etc.)
+- `README.md`
 - Directory tree (top 2 levels)
 - Any existing agent configuration files
 - Key configuration files
@@ -61,7 +62,7 @@ Conduct this as a **conversation, not a questionnaire**. Ask broad questions, fo
 
 ### Topics to Cover
 
-Work through these naturally, adapting order and depth based on the conversation:
+Work through these naturally, adapting order and depth based on the conversation.
 
 **Project identity**
 > "What is this project? One sentence — what it does and who it's for."
@@ -88,10 +89,15 @@ Follow up if team: who owns what, who reviews what, how are architecture decisio
 **Conventions & rules**
 > "Any strong conventions? Naming patterns, things you always do or never do, patterns to prefer or avoid."
 
-Follow up on: error handling patterns, logging approach, patterns learned the hard way to avoid.
+Follow up on: error handling, logging approach, patterns learned the hard way to avoid.
 
 **Testing**
 > "What's the testing setup, if any? Framework, what gets tested, any expectations on coverage?"
+
+If the user opts into the `/defrag` skill later, also ask:
+> "Defrag runs the test suite after every batch of changes. If your full suite is slow, do you have a faster command (a smoke subset, a single package, etc.) it should use instead?"
+
+Record this as `defrag.fast_test_command` in the routing file's Skill Configuration section.
 
 **Essential commands**
 > "What are the essential commands? Install, dev, build, test — anything I'll need regularly."
@@ -99,78 +105,74 @@ Follow up on: error handling patterns, logging approach, patterns learned the ha
 **Past experience**
 > "Anything you've learned the hard way on this project? Mistakes made, abandoned approaches, things that look tempting but don't work?"
 
+These seed `lessons.md`. Push for specifics — vague "be careful with X" entries don't help the agent later.
+
 **Agent behavior**
 > "How do you want me to work? When should I ask before proceeding vs. just do it? Any preferences on how I communicate?"
 
 Follow up:
 > "When I summarize a session, what tone do you prefer — neutral (what changed, what failed, what's uncertain) or accomplishment-focused (what was achieved, what's done)?"
 
-Record the user's preference. If they don't have one, ask which they'd like to try first.
+Record the user's preference. This becomes the `reporting_style` value used to customize the `/checkpoint` skill. If they have no preference, ask which they'd like to try first.
 
-**Research & spec workflow**
-> "Before I write code, do you want me to research options and write a spec first — or dive straight into implementation? And if specs, where should they live? (project root, docs/, somewhere else)"
+**Spec workflow**
+> "Before I write code on anything non-trivial, do you want me to draft a spec first — or dive straight into implementation? And if specs, where should they live? (project root, `docs/`, `specs/`, somewhere else)"
 
-If the user opts in to specs, note the preferred location. This determines whether the Spec Workflow section is generated in the routing file and where `SPEC-*.md` files will be placed.
+Two outcomes:
+- **If yes**: include the Spec Workflow section in the routing file and customize the `/spec` skill with `spec_location` set to the user's choice.
+- **If no**: omit the Spec Workflow section entirely, and skip installing the `/spec` skill.
 
 **Skills & workflow shortcuts**
-> "Do you want me to set up workflow skills — things like `/checkpoint` (memory maintenance), `/spec` (spec generation), or `/lessons` (lesson review)? For Claude Code, these become proper skills that I can trigger automatically when relevant. For other tools, I'll document them as named workflow conventions."
+> "ContextKit ships four optional workflow skills. Want me to install them?
+>
+> - **`/checkpoint`** — append-only memory updates at session end. Auto-invocable: I'll propose it when work has accumulated. Recommended for everyone.
+> - **`/spec`** — drafts a `SPEC-*.md` before non-trivial work. Manual only. Recommended if you said yes to the spec workflow.
+> - **`/defrag`** — codebase cleanup pass. Removes dead code, consolidates duplicates. Manual only. Useful after multi-session feature work.
+> - **`/adversarial-review`** — three-perspective board review of a spec or research doc before high-stakes commitments. Manual only. Heavyweight; skip if your work is mostly small or quickly reversible.
+>
+> Together they form a chain: `/spec` → optional `/adversarial-review` → implement → occasional `/defrag` → `/checkpoint`. You can install any subset."
 
-If yes and Claude Code is detected: explain that skills can be auto-invoked by the agent (checkpoint, lessons) or restricted to manual invocation only (spec). Ask if the user wants to adjust which are auto vs manual.
+For Claude Code: explain that auto-invocable skills (`/checkpoint`) keep their description in context so Claude knows when to suggest them; manual-only skills (`/spec`, `/defrag`, `/adversarial-review`) don't auto-fire and require explicit invocation.
 
-If yes: generate the appropriate format for the detected tool using the research done in Phase 1. For Claude Code, customize the skill templates shipped in `.claude/skills/`. For tools without native skill support, document the workflows as named conventions in the routing file instead (e.g., "To run a checkpoint, say 'run checkpoint'").
+For other tools: skills install as named workflow conventions in the routing file (e.g., "say `run checkpoint` to update memory").
+
+**Wrap-up**
+After covering the topics, summarize what you learned and ask: *"Did I miss anything important?"*
 
 ### Interview Guidelines
 
-- **Go deeper** where the user has strong opinions or the project has unusual complexity
-- **Move faster** where the user gives brief answers or says "standard" / "nothing special"
-- **Don't ask about areas that don't apply** — if there's no frontend, don't ask frontend questions
-- **For brownfield projects**, frame questions as confirmation of what you inferred, not blank interrogation
-- **After covering the topics**, summarize what you learned and ask: "Did I miss anything important?"
+- **Go deeper** where the user has strong opinions or the project has unusual complexity.
+- **Move faster** where the user gives brief answers or says "standard" / "nothing special."
+- **Don't ask about areas that don't apply** — if there's no frontend, skip frontend questions; if there are no tests, skip the defrag fast-test question.
+- **For brownfield projects**, frame questions as confirmation of what you inferred, not blank interrogation.
 
 ---
 
-## Phase 3 — Generate Memory System
+## Phase 3 — Generate Memory System and Customize Skills
 
-Using everything gathered, generate the complete `.context/` hierarchy and the routing file. Do not leave placeholders — write real content based on what you learned. If information is missing for a section, omit that section rather than filling it with generic content.
+Using everything gathered, generate the `.context/` hierarchy, the routing file, and the customized skill set. Do not leave placeholders — write real content based on what you learned. If information is missing for a section, omit that section rather than filling it with generic content.
 
 ### Step 1: Create modules
 
-Create `.context/modules/` with whatever modules the project needs. Each module is a self-contained markdown file covering one domain.
+Create `.context/modules/` with whatever modules the project actually needs. Each module is a self-contained markdown file covering one domain.
 
-**Example module categories** (use as inspiration, not a checklist):
+Example module categories (use as inspiration, not a checklist):
 
 | Example | What it might contain | Create it if... |
 |---------|----------------------|-----------------|
 | `architecture.md` | System design, data flow, component boundaries, infrastructure | Project has meaningful architectural patterns or complexity |
-| `conventions.md` | Naming rules, code style, patterns to use/avoid, import ordering | User described specific conventions or strong preferences |
-| `workflows.md` | Git strategy, commit format, PR process, CI/CD, deployment | User described a specific workflow beyond the basics |
-| `testing.md` | Framework, coverage expectations, mocking patterns, fixtures | User described a testing setup |
+| `conventions.md` | Naming rules, code style, patterns to use/avoid | User described specific conventions or strong preferences |
+| `workflows.md` | Git strategy, commit format, PR process, CI/CD | User described a workflow beyond the basics |
+| `testing.md` | Framework, coverage expectations, mocking patterns | User described a testing setup |
 | Domain-specific | Frontend patterns, API design, database conventions, ML pipeline rules | Project has distinct domains with their own conventions |
 
-Each module should be **self-contained**: an agent loading only the routing file + that one module should have enough context to work effectively in that domain.
+Each module should be **self-contained**: an agent loading only the routing file plus that one module should have enough context to work effectively in that domain.
 
 ### Step 2: Initialize data files
 
-Create `.context/data/` with the following:
+Create `.context/data/` with:
 
-**`sessions.md`** — Initialize with the bootstrap session:
-```markdown
-# Session Log
-
-<!-- Append new entries after each substantive work session. Never edit past entries.
-     After ~30 entries, propose consolidation: summarize the oldest 20 into a dated
-     summary block preserving key decisions and open threads, then replace those
-     entries with the summary. Never consolidate silently. -->
-
-## [today's date] — Bootstrap
-**Area**: Project setup
-**Work done**: Ran ContextKit bootstrap interview, generated memory system
-**Decisions made**: [any decisions made during the interview]
-**Memory created**: [list the modules and data files generated]
-**Open threads**: [anything flagged for follow-up]
-```
-
-**`decisions.md`** — Seed with any decisions discussed during the interview:
+**`decisions.md`** (always) — seed with any decisions discussed during the interview:
 ```markdown
 # Decision Record
 
@@ -190,7 +192,7 @@ Create `.context/data/` with the following:
 -->
 ```
 
-**`lessons.md`** — Seed with any lessons/mistakes mentioned during the interview:
+**`lessons.md`** (always) — seed with any lessons or hard-won knowledge from the interview:
 ```markdown
 # Lessons Learned
 
@@ -210,20 +212,50 @@ Create `.context/data/` with the following:
 -->
 ```
 
-### Step 3: Write the routing file
+**`sessions.md`** — **only for tools without native auto-memory** (i.e., not Claude Code, not Codex). Initialize with the bootstrap session:
+```markdown
+# Session Log
 
-Write the routing file to the location determined in Phase 1. This replaces the bootstrap content entirely. The routing file must be **under 150 lines** (excluding frontmatter). Use the correct format for the detected tool.
+<!-- Append new entries after each substantive work session. Never edit past entries.
+     After ~30 entries, propose consolidation: summarize the oldest 20 into a dated
+     summary block preserving key decisions and open threads, then replace those
+     entries with the summary. Never consolidate silently. -->
 
-#### Routing file body (shared across all tools)
+## [today's date] — Bootstrap
+**Area**: Project setup
+**Work done**: Ran ContextKit bootstrap interview, generated memory system
+**Decisions made**: [decisions made during interview, or "None"]
+**Memory created**: [modules and data files generated]
+**Open threads**: [anything flagged for follow-up, or "None"]
+```
 
-The markdown body is the same regardless of tool. Use this template:
+If you're in Claude Code or Codex, skip this file. The `/checkpoint` skill detects the file's absence at runtime and skips its sessions step automatically.
+
+### Step 3: Customize the shipped skills
+
+For each skill the user opted into, locate the shipped template in `.claude/skills/<name>/SKILL.md` and replace the `BOOTSTRAP_CUSTOMIZE` blocks. The shipped skills and their customization points:
+
+| Skill | Customize | Source |
+|-------|-----------|--------|
+| `/checkpoint` | `reporting_style` block — fill with user's tone preference (neutral / accomplishment-focused / their own description) | Step under "Propose sessions.md entry" |
+| `/spec` | `spec_location` block — fill with user's chosen spec directory | Step under "Generate the spec" |
+| `/defrag` | None at the SKILL.md level. Set `defrag.fast_test_command` in the routing file's Skill Configuration section if the user provided one | — |
+| `/adversarial-review` | None | — |
+
+For tools without native skill support (everything except Claude Code), do not modify the skill files — instead, document the workflows as named conventions in the routing file's Skills section. The skill files remain on disk as reference but are not invoked through a slash-command interface.
+
+### Step 4: Write the routing file
+
+Write the routing file to the location determined in Phase 1. The routing file should stay **under 200 lines** (excluding frontmatter). Use the body template below, then wrap it with the correct format for the detected tool.
+
+#### Routing file body
 
 ```markdown
 # [Project Name]
 [One-line description]. Built with [stack summary].
 
 ## Critical Rules
-<!-- The 5-10 most important things the agent must ALWAYS know -->
+<!-- The 5–10 most important things the agent must ALWAYS know -->
 - [Rule derived from interview]
 - [Rule derived from interview]
 ...
@@ -232,6 +264,7 @@ The markdown body is the same regardless of tool. Use this template:
 <!-- Load ONLY the modules relevant to the current task — never load everything -->
 Before starting work, scan this table to determine which modules apply. Also check
 Data Files for relevant history.
+
 | Module | Path | Load when |
 |--------|------|----------|
 | [Name] | .context/modules/[file].md | [Specific trigger from interview] |
@@ -239,11 +272,21 @@ Data Files for relevant history.
 
 ## Data Files
 <!-- Accumulated knowledge — consult relevant entries, not entire files -->
+
 | File | Path | Purpose |
 |------|------|---------|
-| Sessions | .context/data/sessions.md | Running work log |
 | Decisions | .context/data/decisions.md | Decision records with reasoning |
 | Lessons | .context/data/lessons.md | Hard-won knowledge and past mistakes |
+[| Sessions | .context/data/sessions.md | Running work log |  ← include only if sessions.md was created]
+
+**Append-only rules**:
+- All three files are append-only. Never edit past entries. When something is
+  superseded or revised, add a follow-up beneath the original prefixed with
+  `[YYYY-MM-DD UPDATE]:`.
+- After ~30 entries in `sessions.md` or `lessons.md`, propose consolidation
+  (never consolidate silently).
+- The `/checkpoint` skill (when installed) handles routine appends; for everything
+  else, propose the diff and wait for approval before writing.
 
 ## Memory Maintenance
 
@@ -254,177 +297,67 @@ Always look for opportunities to update the memory system:
 - **Scope changes**: "The project now includes W — should I create a new module?"
 - **Preferences revealed**: "You've corrected me on this pattern — should I update conventions?"
 
-**Before any memory update**:
-1. State which file(s) would change and what the change would be
-2. Wait for approval — the user will review the diff and approve, edit, or deny
-3. Never update memory mid-task without mentioning it — finish current work first
-
-**Data file rules**:
-- `sessions.md` — append-only. Never edit past entries. After ~30 entries, propose
-  consolidation: summarize the oldest 20 into a single dated summary block,
-  preserving key decisions and open threads, then replace those entries with the summary.
-- `decisions.md` — append new entries freely. When a "Revisit if" condition is met,
-  add a follow-up note inline beneath the original entry (prefix: `[YYYY-MM-DD UPDATE]:`).
-  Never delete entries.
-- `lessons.md` — append new entries freely. When a lesson is superseded or was wrong,
-  add a correction inline beneath the original (prefix: `[YYYY-MM-DD UPDATE]:`). After
-  ~30 entries or when entries have grown contradictory or redundant, propose consolidation
-  — never consolidate silently.
-
-**Other rules**:
-- Routing file changes are high-stakes — propose them carefully
-- Modules can be edited — but changes should be targeted, not full rewrites
-- **Session summaries**: Use the reporting style from the interview — [neutral / accomplishment-focused / user's custom description]. See Preferences section.
+Before any memory update: state which file(s) would change, show the diff, wait
+for approval. Never update memory mid-task — finish current work first. Routing
+file changes are high-stakes; propose them carefully.
 
 ## Preferences
 <!-- How the user wants the agent to behave — generated from interview -->
-- [Preference from interview]
-- [Preference from interview]
+- Reporting style: [neutral / accomplishment-focused / user's custom description]
+- [Other preferences from interview]
 ...
 
-## Spec Workflow
-<!-- Only include this section if the user opted in during the interview -->
-Before implementing anything non-trivial, generate a spec. Place specs in [location
-from interview — e.g. project root, docs/, specs/].
-
-**`SPEC-[feature-name].md`** format:
-- **Problem**: What are we solving and why
-- **Options considered**: At least 2-3 approaches with tradeoffs
-- **Decision**: What we're doing and why not the alternatives
-- **Implementation plan**: Step-by-step with file-level specifics
-- **Exit criteria**: Exactly what must be true when this is done (tests that must pass,
-  behavior to verify, screenshots if UI). This is the task contract — implementation
-  is not complete until all exit criteria are met.
-- **Out of scope**: What we explicitly are not doing
-
-Do not begin implementation until the spec is approved.
+[## Spec Workflow  ← include only if user opted into specs]
+Non-trivial work gets a spec first. Specs live in [location from interview].
+Use `/spec` to generate one (Claude Code), or say "run spec" (other tools).
+The skill owns the template and the step-by-step generation logic — see
+`.claude/skills/spec/SKILL.md`. Implementation does not begin until the spec
+is approved.
 
 ## Skills
-<!-- Only include this section if the user opted in to skills during the interview -->
-<!-- For Claude Code: reference the skills in .claude/skills/ -->
-<!-- For other tools: document as named workflow conventions -->
-[Generated per-tool based on Phase 1 research — see examples below]
+<!-- Include only if user opted into any skills -->
 
-<!-- Claude Code example (.claude/skills/ format):
-ContextKit ships with skill templates in `.claude/skills/`. These were customized during bootstrap.
-- `/checkpoint` — Memory maintenance: proposes sessions.md entry + pending updates + cross-file consolidation (auto-invokes after substantive work)
-- `/spec` — Generates a SPEC-*.md for the current task before implementation (manual only)
-- `/lessons` — Reviews lessons.md for stale or contradictory entries and proposes corrections (auto-invokes when relevant)
--->
+[For Claude Code, list the installed skills:]
+ContextKit ships skills in `.claude/skills/`. Customized during bootstrap.
+- `/checkpoint` — Append-only memory updates. Auto-invokes after substantive work.
+- `/spec` — Generates `SPEC-*.md` before non-trivial implementation. Manual only.
+- `/defrag` — Codebase cleanup (dead code, duplicates, stale imports). Manual only.
+- `/adversarial-review` — Three-perspective board review of high-stakes documents. Manual only.
 
-<!-- Cursor / generic example (natural language conventions):
-"run checkpoint"  → Proposes sessions.md entry + any pending memory updates
-"run spec"        → Generates a SPEC-*.md for the current task before implementation
-"review lessons"  → Reviews lessons.md and proposes corrections for anything outdated
--->
+[For other tools, document as named conventions:]
+- "run checkpoint"        → Memory update at session end.
+- "run spec"              → Generate a SPEC-*.md before implementation.
+- "run defrag"            → Codebase cleanup pass with safety rails.
+- "run adversarial review" → Board review of a spec or research doc.
+
+## Skill Configuration
+<!-- Only include if any skill needs project-specific config -->
+- `defrag.fast_test_command`: [user's faster test command, e.g. `pnpm test:unit`]
+- [Other skill-level overrides as they accumulate]
 ```
 
-#### Tool-specific formatting
+#### Tool-specific wrapping
 
-Each tool has different file format requirements. Wrap the shared body above with the correct format for the detected tool.
+The body above is the same regardless of tool. Wrap it with the right format:
 
-**Cursor** — `.cursor/rules/contextkit.mdc`
+**Claude Code** (`CLAUDE.md`) — plain markdown, no frontmatter required. Use `@.context/modules/<file>.md` syntax to import module files instead of inlining them. Personal/local overrides go in `CLAUDE.local.md` (auto-gitignored).
 
-Cursor rules use `.mdc` files with YAML frontmatter. The routing file must include these frontmatter fields:
+**Codex** (`AGENTS.md`) — plain markdown, no frontmatter. If the user wants Codex's native `[memories]` feature on, add a brief instruction at the top: "Codex memories are opt-in; treat memories as a recall layer, not as the source of truth. Required guidance lives in this file and in `.context/`." Document workflow shortcuts as natural-language conventions.
 
+**Cursor** (`.cursor/rules/contextkit.mdc`) — wrap the body with this frontmatter:
 ```yaml
 ---
 description: "ContextKit routing file — project memory and conventions"
 alwaysApply: true
 ---
 ```
+For path-scoped rules that complement the routing file, create additional `.mdc` files with `globs: <pattern>`. Note: Cursor removed Memories in v2.1.x; sessions.md is required here.
 
-- `description` (string): Shown in the rule picker UI. Summarize what this rule provides.
-- `alwaysApply` (boolean): Must be `true` so the routing file loads in every session.
-- `globs` (string, optional): Omit for the routing file since it applies globally. Use globs only for file-scoped module rules if needed (e.g., `globs: **/*.ts`).
+**Windsurf** (`.windsurf/rules/contextkit.md`) — plain markdown, no frontmatter. Activation modes are set in the Windsurf UI. After writing the file, instruct the user: *"Set this rule's activation mode to 'Always On' in the Windsurf Customizations panel."* Max 12,000 chars per file.
 
-Full example structure:
+**Copilot** (`.github/copilot-instructions.md`) — plain markdown, no frontmatter. The first 4,000 characters are used for code review, so put Critical Rules near the top. For path-specific rules, create files in `.github/instructions/` with `applyTo:` frontmatter.
 
-```
----
-description: "ContextKit routing file — project memory and conventions"
-alwaysApply: true
----
-
-# [Project Name]
-[routing file body here]
-```
-
-**Claude Code** — `CLAUDE.md`
-
-Claude Code reads `CLAUDE.md` as plain markdown with no frontmatter required at the project root. Key format considerations:
-
-- Target **under 200 lines**. Longer files degrade instruction-following.
-- Use `@path/to/file` syntax to import module files instead of inlining them. Example: `@.context/modules/conventions.md`
-- For path-scoped rules, create additional files in `.claude/rules/` with YAML `paths:` frontmatter:
-
-```yaml
----
-paths:
-  - "src/api/**/*.ts"
----
-```
-
-- Personal/local overrides go in `CLAUDE.local.md` (auto-gitignored).
-- **Skills**: If the user opted in, customize the skill templates in `.claude/skills/` based on interview responses. Skills with `disable-model-invocation: false` (checkpoint, lessons) can be auto-triggered by Claude when relevant — their descriptions stay in context so Claude knows when to invoke them. Skills with `disable-model-invocation: true` (spec) are manual-only. Bootstrap should fill in `<!-- BOOTSTRAP_CUSTOMIZE -->` sections in each skill's `SKILL.md` with project-specific values (reporting style, spec location).
-
-Full example structure:
-
-```
-# [Project Name]
-[routing file body here]
-
-## Modules
-Load these when working in the relevant area:
-- @.context/modules/architecture.md
-- @.context/modules/conventions.md
-```
-
-**Windsurf** — `.windsurf/rules/contextkit.md`
-
-Windsurf rule files are plain markdown with **no frontmatter**. Activation modes (Always On, Glob, Model Decision, Manual) are configured through the Windsurf UI, not in the file itself.
-
-- Maximum **12,000 characters** per rule file, **6,000 per individual rule**.
-- Use clear section headers organized by domain/concern.
-- Optional XML tags can group related rules: `<coding_guidelines>...</coding_guidelines>`
-- Windsurf also respects `AGENTS.md` files for directory-scoped rules.
-
-After writing the file, instruct the user: *"Set this rule's activation mode to 'Always On' in the Windsurf Customizations panel."*
-
-Full example structure:
-
-```
-# [Project Name]
-[routing file body here]
-```
-
-**GitHub Copilot** — `.github/copilot-instructions.md`
-
-The repository-wide instructions file is plain markdown with no frontmatter. It applies to all Copilot interactions in the repository.
-
-- First **4,000 characters** are used for code review; the full file is used by Copilot Chat and coding agent.
-- Place the most critical rules (Critical Rules section) near the top of the file.
-- For path-specific rules, create additional files in `.github/instructions/` using `NAME.instructions.md` format with `applyTo` frontmatter:
-
-```yaml
----
-applyTo: "src/api/**/*.ts"
----
-```
-
-- Optional `excludeAgent` field can hide instructions from specific agents (`"code-review"` or `"coding-agent"`).
-- Copilot also respects `AGENTS.md` files for directory-scoped agent instructions.
-
-Full example structure:
-
-```
-# [Project Name]
-[routing file body here]
-```
-
-**Generic / Unknown** — `AGENTS.md`
-
-Plain markdown, no frontmatter. Overwrites this bootstrap file. `AGENTS.md` is supported by multiple tools (Copilot, Windsurf, and others) as a directory-scoped convention. A root-level `AGENTS.md` applies globally.
+**Generic** (`AGENTS.md`) — plain markdown, no frontmatter. Overwrites this bootstrap file.
 
 ---
 
@@ -436,6 +369,11 @@ After generating all files, report to the user:
 >
 > **Routing file**: [location]
 > **Modules**: [list with one-line descriptions]
-> **Data files**: sessions.md, decisions.md, lessons.md
+> **Data files**: decisions.md, lessons.md[, sessions.md]
+> **Skills installed**: [list of skills the user opted into, or "none"]
 >
 > Review the generated files and let me know if anything needs adjusting. The memory system is now active — I'll proactively suggest updates as we work together."
+
+If `/checkpoint` was installed, also note: *"I'll propose `/checkpoint` at the end of substantive sessions. You can also run it manually anytime."*
+
+If `/spec` was installed, also note: *"For non-trivial work, I'll suggest running `/spec` before writing code."*
