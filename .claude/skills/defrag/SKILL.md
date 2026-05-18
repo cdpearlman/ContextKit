@@ -83,23 +83,33 @@ Tooling examples (use whatever the project actually has):
 - Rust: `cargo +nightly udeps`, `cargo clippy`
 - Go: `staticcheck`, `golang.org/x/tools/cmd/deadcode`
 
-### Phase 3 — Categorize
-Write `docs/DEFRAG_PLAN.md` (or repo-root fallback) with three tiers:
+### Phase 3 — Categorize and write the plan
 
-- **SAFE** — categories 1–4 above. Auto-execute in Phase 5.
-- **CONSOLIDATE** — categories 5–7. One-line justification per item.
-  Per-category approval before executing.
-- **DEFER** — anything matching the out-of-scope list. Flag with a suggested
-  `SPEC-*.md` filename. Do not execute.
+Write `docs/DEFRAG_PLAN.html` (or repo-root fallback) — a single self-contained HTML file the user opens in a browser to review and approve. The log (`DEFRAG_LOG.md`) stays markdown because it's a durable archive that future defrag runs will read; the plan is HTML because it's read once, approved, and discarded.
+
+Structure the plan with three visually distinct tiers:
+
+- **SAFE** (green) — categories 1–4 above. Will auto-execute in Phase 5.
+- **CONSOLIDATE** (amber) — categories 5–7. One-line justification per item. Per-category approval required before executing.
+- **DEFER** (red) — anything matching the out-of-scope list. Flag with a suggested `SPEC-*.md` filename. Will not execute.
+
+HTML requirements:
+- **Self-contained**: inline CSS, no external dependencies, no JavaScript unless it earns its place (collapsible groups for tiers with >20 items is the one case where it does).
+- **Tier headers with count badges**: `SAFE (37)`, `CONSOLIDATE (12)`, `DEFER (3)`. The counts should be unmistakable at a glance — the user's first question is "how big is this approval?"
+- **Per-finding rendering**: each item shows the `file:line` citation as a monospace span, the tool that flagged it as a small tag (e.g., `knip`, `ruff`, `vulture`), the one-line description, and — for CONSOLIDATE merges — the proposed canonical location with the heuristic rule that picked it.
+- **Group by category within tiers**: each tier breaks into its constituent categories (unused imports, unreachable code, duplicate utilities, etc.) so the user can approve or reject at category granularity.
+- **Tier verdict at a glance**: color, weight, and spacing should make SAFE/CONSOLIDATE/DEFER readable without reading. Don't bury the signal in prose.
+- **No ASCII tables, no faked charts**: use a real `<table>` with proper styling. If you'd reach for pipe characters or unicode blocks to lay something out in markdown, do it as a real HTML element instead.
 
 For CONSOLIDATE merges, name the canonical location using this heuristic:
-1. If one copy lives in `shared/`, `utils/`, `lib/`, `common/`, or equivalent —
-   use it.
+1. If one copy lives in `shared/`, `utils/`, `lib/`, `common/`, or equivalent — use it.
 2. Else if one copy has materially more callers — use it.
 3. Else — ask the user where to consolidate.
 
+The plan is ephemeral. Do not commit it. Do not reference it from code. The log captures what was actually executed; the plan captures what was proposed and is discarded after approval.
+
 ### Phase 4 — Approval
-Present:
+Present the HTML plan and summarize:
 - N items SAFE (will auto-execute)
 - N items CONSOLIDATE, grouped by category (will ask per category)
 - N items DEFER (flagged only)
@@ -138,10 +148,12 @@ Output the same summary to the user. Suggest the next step:
   string-built identifiers will fool grep.
 - Skipping tests "just for the safe batch." There is no safe batch.
 - Picking a canonical location by aesthetic preference. Use the heuristic, or ask.
+- Committing the HTML plan. It's a review surface, not a record. The log is the record — it's markdown precisely because future defrag runs will read it.
+- Replacing the markdown log with HTML "for consistency." The log accumulates across runs and is read by both the agent and version control. It stays markdown.
 
 ## Output artifacts
-- `docs/DEFRAG_PLAN.md` (Phase 3)
-- `docs/DEFRAG_LOG.md` (appended every run)
+- `docs/DEFRAG_PLAN.html` (Phase 3) — ephemeral review surface, not committed
+- `docs/DEFRAG_LOG.md` (appended every run) — durable archive, committed
 - One commit per executed category (Phase 5)
 - A final summary to the user
 

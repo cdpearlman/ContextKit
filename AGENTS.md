@@ -136,6 +136,21 @@ For Claude Code: explain that auto-invocable skills (`/checkpoint`) keep their d
 
 For other tools: skills install as named workflow conventions in the routing file (e.g., "say `run checkpoint` to update memory").
 
+**Review-artifact format defaults** *(only ask if user opted into `/defrag`, `/adversarial-review`, or `/spec`)*
+
+> "Two of those skills — `/defrag` and `/adversarial-review` — produce review artifacts that are read once, approved, and discarded. They default to **HTML** for that case: opened in a browser, dense and scannable, not committed. The durable outputs (the defrag log, `decisions.md`, the revised spec) stay markdown.
+>
+> `/spec` is markdown-canonical — the spec itself is re-read during implementation, edited during approval, and committed. But for specs with visual content (UI mockups, side-by-side option comparisons, architecture diagrams), the skill can optionally emit a `SPEC-*-preview.html` companion for the approval step, also discarded after.
+>
+> Default to HTML for all three, or override any of them to markdown?"
+
+Record the answers in the routing file's Skill Configuration section as:
+- `defrag.plan_format` — `html` (default) or `markdown`
+- `adversarial-review.report_format` — `html` (default) or `markdown`
+- `spec.html_companion` — `enabled` (default) or `disabled`
+
+If the user has no preference, default all three to HTML / enabled. The rule of thumb: **review artifacts read once go in HTML; archives and re-read documents stay markdown**.
+
 **Wrap-up**
 After covering the topics, summarize what you learned and ask: *"Did I miss anything important?"*
 
@@ -233,16 +248,16 @@ If you're in Claude Code or Codex, skip this file. The `/checkpoint` skill detec
 
 ### Step 3: Customize the shipped skills
 
-For each skill the user opted into, locate the shipped template in `.claude/skills/<name>/SKILL.md` and replace the `BOOTSTRAP_CUSTOMIZE` blocks. The shipped skills and their customization points:
+For each skill the user opted into, locate the shipped template in `.claude/skills/<name>/SKILL.md` and replace the `BOOTSTRAP_CUSTOMIZE` blocks. Also record any routing-file-level skill settings in the Skill Configuration section.
 
-| Skill | Customize | Source |
-|-------|-----------|--------|
-| `/checkpoint` | `reporting_style` block — fill with user's tone preference (neutral / accomplishment-focused / their own description) | Step under "Propose sessions.md entry" |
-| `/spec` | `spec_location` block — fill with user's chosen spec directory | Step under "Generate the spec" |
-| `/defrag` | None at the SKILL.md level. Set `defrag.fast_test_command` in the routing file's Skill Configuration section if the user provided one | — |
-| `/adversarial-review` | None | — |
+| Skill | SKILL.md customization | Routing file settings |
+|-------|------------------------|----------------------|
+| `/checkpoint` | `reporting_style` block — fill with user's tone preference (neutral / accomplishment-focused / their own description) | None |
+| `/spec` | `spec_location` block — fill with user's chosen spec directory | `spec.html_companion` (enabled / disabled) |
+| `/defrag` | None | `defrag.fast_test_command` (if user provided one), `defrag.plan_format` (html / markdown) |
+| `/adversarial-review` | None | `adversarial-review.report_format` (html / markdown) |
 
-For tools without native skill support (everything except Claude Code), do not modify the skill files — instead, document the workflows as named conventions in the routing file's Skills section. The skill files remain on disk as reference but are not invoked through a slash-command interface.
+For tools without native skill support (everything except Claude Code), do not modify the skill files — instead, document the workflows as named conventions in the routing file's Skills section. The skill files remain on disk as reference but are not invoked through a slash-command interface. Routing-file-level settings still apply.
 
 ### Step 4: Write the routing file
 
@@ -301,6 +316,13 @@ Before any memory update: state which file(s) would change, show the diff, wait
 for approval. Never update memory mid-task — finish current work first. Routing
 file changes are high-stakes; propose them carefully.
 
+**HTML review artifacts are ephemeral**: the defrag plan (`DEFRAG_PLAN.html`),
+adversarial-review report (`REVIEW-*.html`), and optional spec HTML companion
+(`SPEC-*-preview.html`) are read-once review surfaces — do not commit them, do
+not reference them from code, do not re-read them after the decision they
+informed. The durable outputs of those workflows live elsewhere: `DEFRAG_LOG.md`,
+the revised `SPEC-*.md`, `decisions.md`, and `lessons.md`.
+
 ## Preferences
 <!-- How the user wants the agent to behave — generated from interview -->
 - Reporting style: [neutral / accomplishment-focused / user's custom description]
@@ -331,9 +353,21 @@ ContextKit ships skills in `.claude/skills/`. Customized during bootstrap.
 - "run adversarial review" → Board review of a spec or research doc.
 
 ## Skill Configuration
-<!-- Only include if any skill needs project-specific config -->
+<!-- Per-skill overrides. Skills check this section before falling back to their
+     defaults. Only include settings the user actually opted into or customized. -->
+
 - `defrag.fast_test_command`: [user's faster test command, e.g. `pnpm test:unit`]
-- [Other skill-level overrides as they accumulate]
+- `defrag.plan_format`: html
+- `adversarial-review.report_format`: html
+- `spec.html_companion`: enabled
+
+<!-- Format rationale: review artifacts that are read once, approved, and
+     discarded (the defrag plan, the adversarial-review report, the optional
+     spec preview) default to HTML for visual density and scannability.
+     Durable artifacts that are re-read by the agent or diffed in version
+     control (DEFRAG_LOG.md, decisions.md, lessons.md, sessions.md, the
+     canonical SPEC-*.md, this routing file, modules) stay markdown.
+     Override here if a skill should emit markdown instead. -->
 ```
 
 #### Tool-specific wrapping
@@ -371,6 +405,7 @@ After generating all files, report to the user:
 > **Modules**: [list with one-line descriptions]
 > **Data files**: decisions.md, lessons.md[, sessions.md]
 > **Skills installed**: [list of skills the user opted into, or "none"]
+> **Review-artifact formats**: [defrag plan: html/markdown, adversarial-review report: html/markdown, spec HTML companion: enabled/disabled — omit any the user didn't opt into]
 >
 > Review the generated files and let me know if anything needs adjusting. The memory system is now active — I'll proactively suggest updates as we work together."
 

@@ -137,44 +137,29 @@ shared blind spots in synthesis.
 
 ### 5. Synthesize (after all agents return)
 
-Collect all three results. Produce a synthesis with these sections:
+Collect all three sub-agent results. Produce two outputs:
 
-**Agreement**
-Where 2+ reviewers independently flagged the same concern. These are the
-strongest signals — but note: convergence may also reflect shared model biases,
-not only genuine high-confidence issues. Weight agreement as meaningful evidence,
-not proof.
+**(a) An HTML review report** at `REVIEW-[doc-name]-[YYYY-MM-DD].html`, in the same directory as the source document (or project root if the source isn't in a clear location). This is the artifact the user actually reviews. It is ephemeral — read once, informs the next iteration of the document, then becomes irrelevant. Do not commit it. The decisions and lessons that come out of the review go into `decisions.md` and `lessons.md` in markdown — those are durable.
 
-**Tension**
-Where reviewers disagree. Present both sides without resolving artificially.
-Example: "The Builder says this is feasible as designed, but the Stakeholder
-questions whether it solves the right problem." Tension is signal — it usually
-points to a real tradeoff the document hasn't surfaced.
+**(b) A brief in-chat markdown summary**: verdict label, issue counts, recommended next action, and the path to the HTML report. This is what the agent (and you in the next turn) react to. Keep it under 10 lines. The full reasoning lives in the HTML; the summary exists so the next turn doesn't have to re-parse it.
 
-**The Question Nobody Asked**
-What's absent from the entire conversation — document AND reviews? What
-assumption is so deeply shared that nobody thought to question it? This section
-is mandatory even if the answer is "the board covered it thoroughly." Do not
-skip it. If you genuinely can't find one, say so — but try harder first.
+The HTML report contains these sections, in this order:
 
-**Shared Blind Spots (Forcing Function, Not a Real Check)**
-A genuine epistemic check on shared model biases isn't fully achievable when
-the same model wrote all three reviews. Treat this section as a forcing function
-that may surface some blind spots, not a clean check. Ask:
-- Where might all three reviewers have defaulted to the same architectural,
-  pattern, or framing assumption?
-- Are there critiques that would be obvious to a domain expert but invisible
-  to a generalist model?
-- What might a reviewer with hands-on experience in this specific domain catch
-  that this board missed?
+- **Verdict** (top, prominent) — SOLID / SHAKY / RED FLAG as a large colored badge (green / amber / red) with confidence level and total blocking/warning/nit counts adjacent. The reader sees this without scrolling.
+- **Reviewer findings** — three columns or three stacked panels (Builder / Stakeholder / Adversary). Each finding renders as: issue title, location, a colored severity dot (red=blocking, amber=warning, gray=nit), the severity justification, and the suggestion. Each reviewer's bias disclosure appears at the bottom of their column.
+- **Agreement** — where 2+ reviewers flagged the same concern. Show which reviewers agreed and link to the relevant findings rather than restating them. Convergence is the strongest signal in the report; it should read that way visually.
+- **Tension** — where reviewers disagreed. Present both sides side-by-side, not stacked. Tension is signal, not noise — the layout should make that clear.
+- **The Question Nobody Asked** — single section, prose, visually set apart so it isn't lost.
+- **Shared Blind Spots** — honest section. Include "I don't know what I'm missing" when that's the truth.
+- **If You Proceed Anyway** — top 2–3 risks with mitigations, rendered as small cards or rows.
 
-If the honest answer is "I don't know what I'm missing," say so. That's more
-useful than a performed check.
-
-**If You Proceed Anyway**
-For the top 2-3 risks identified, what mitigation strategies would reduce
-the downside? "If you can't fix everything, here's how to survive." This makes
-critique actionable rather than just discouraging.
+HTML requirements:
+- **Self-contained**: inline CSS, inline SVG for any diagrams, no external dependencies, no JavaScript unless interactivity adds review value (collapsing long finding lists in a reviewer column is the one case where it does).
+- **Severity treatment must be unmistakable**: red for blocking, amber for warning, gray for nit. Apply this consistently — colored dot, colored left border, colored badge. Don't mix conventions across reviewers.
+- **Three-reviewer layout must make agreement legible**: if Builder and Adversary both flagged the same issue, the layout should let the reader see that without page-flipping. Side-by-side columns or aligned rows work; stacked sections do not.
+- **No ASCII art, no faked tables**: use real `<table>`, real SVG. Render `file:line` as a monospace span, not a code fence.
+- **Scannable, not a wall**: visual density matters. If a section can't be scanned in 5 seconds, it's too long. The point of HTML here is information density — use it.
+- **No prose duplication between sections**: each finding lives in one place. Agreement and Tension reference findings; they don't restate them.
 
 ### 6. Verdict
 
@@ -186,11 +171,10 @@ Apply this rubric:
 | **SHAKY** | 1 blocking issue OR 3+ warnings OR significant unresolved tension between reviewers. Fixable but not approval-ready. |
 | **RED FLAG** | 2+ blocking issues OR fundamental disagreement about whether to proceed at all OR The Question Nobody Asked reveals a missing premise that invalidates the document's framing. |
 
-Include in the verdict:
-- Verdict label with confidence level (high / medium / low)
-- Total count of blocking / warning / nit issues across all three reviewers
-- A one-line explanation of why this verdict, not the next one up or down
-- The recommended next action (approve, revise specific sections, rethink approach, abandon)
+The verdict appears in two places:
+
+- **In the HTML report**: at the top, as a prominent colored badge with confidence level and issue counts adjacent.
+- **In the in-chat markdown summary**: as the first line. The summary should contain the verdict label with confidence (high / medium / low), total blocking/warning/nit counts, a one-line explanation of why this verdict (not the next one up or down), the recommended next action, and the path to the HTML report.
 
 Wait for the user to decide how to proceed.
 
@@ -234,3 +218,5 @@ Guardrails against degeneration:
   specifically *why* it's solid, not "looks good."
 - **Never end with "but overall this looks good" unless it genuinely does.**
   That phrase is a reflex, not an assessment.
+  - **Don't commit the HTML review.** It's a review surface, not a record. The durable outputs of an adversarial review live in the revised spec, in `decisions.md` (if any decisions came out of it), and in `lessons.md` (if the review caught something that should be a lesson going forward). The HTML itself is read once and discarded.
+- **Don't put the full reasoning in the chat summary.** The summary's job is to give the next turn enough to act on (verdict, counts, recommended action, path). The full reasoning lives in the HTML where it can be read once and properly. Restating it in chat defeats the format split.
